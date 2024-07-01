@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: spring-boot-aws-sqs-big-message
+
+aws:
+  queue:
+    name: dev-dove-sqs
