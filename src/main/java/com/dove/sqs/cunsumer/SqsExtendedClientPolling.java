@@ -1,10 +1,14 @@
 package com.dove.sqs.cunsumer;
 
+import com.amazon.sqs.javamessaging.AmazonSQSExtendedClient;
+import com.amazon.sqs.javamessaging.ExtendedClientConfiguration;
 import com.dove.sqs.cunsumer.service.MessageService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Component;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 
@@ -16,30 +20,35 @@ import java.util.concurrent.CompletableFuture;
  * SqsClient, ThreadPoolTaskExecutor를 이용해 SQS에서 메시지를 받는다.
  */
 @Slf4j
-//@Component
-public class SqsClientPolling implements AwsSQS {
+@Component
+public class SqsExtendedClientPolling implements AwsSQS {
     private static final int THREAD_SLEEP_TIME = 1000;
     private final ThreadPoolTaskExecutor consumerThreadPoolTaskExecutor;
 
     private final GetQueueUrlResponse queueUrl;
-    private final SqsClient sqsClient;
+    private SqsClient sqsExtended;
 
     private final MessageService messageService;
 
-    //DI
-    public SqsClientPolling(
-            ThreadPoolTaskExecutor consumerThreadPoolTaskExecutor,
-            SqsClient sqsClient,
+    // DI
+    public SqsExtendedClientPolling(
             @Value("${aws.queue.name}") String SQS_QUEUE_NAME,
+            @Value("${aws.bucket.name}") String BUCKET_NAME,
+            ThreadPoolTaskExecutor consumerThreadPoolTaskExecutor,
+            SqsClient sqsClient, S3Client s3Client,
             MessageService messageService
     ) {
-        this.consumerThreadPoolTaskExecutor = consumerThreadPoolTaskExecutor;
-        this.sqsClient = sqsClient;
-        this.messageService = messageService;
+        // SQS client
+        ExtendedClientConfiguration extendedClientConfig = new ExtendedClientConfiguration().withPayloadSupportEnabled(s3Client, BUCKET_NAME);
+        this.sqsExtended = new AmazonSQSExtendedClient(SqsClient.builder().build(), extendedClientConfig);
 
         // SQS queue url
         this.queueUrl = sqsClient.getQueueUrl(builder -> builder
                 .queueName(SQS_QUEUE_NAME).build());
+
+        // bean setting
+        this.messageService = messageService;
+        this.consumerThreadPoolTaskExecutor = consumerThreadPoolTaskExecutor;
     }
 
     /**
@@ -47,8 +56,6 @@ public class SqsClientPolling implements AwsSQS {
      */
     @PostConstruct
     public void initiateMessageProcessing() {
-
-
         ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest.builder()
                 .queueUrl(queueUrl.queueUrl())
                 .maxNumberOfMessages(10)
@@ -68,9 +75,9 @@ public class SqsClientPolling implements AwsSQS {
             while (true) {
                 try {
                     log.debug("Polling queue");
-                    ReceiveMessageResponse receiveMessageResponse = sqsClient.receiveMessage(receiveMessageRequest);
+                    ReceiveMessageResponse receiveMessageResponse = sqsExtended.receiveMessage(receiveMessageRequest);
                     if (receiveMessageResponse.hasMessages()) {
-                        log.info("Message received: {}", receiveMessageResponse.messages());
+                        log.debug("Message received: {}", receiveMessageResponse.messages());
                         receiveMessageResponse.messages().forEach(this::processMessageIfThreadAvailable);
                     }
                 } catch (Exception e) {
@@ -110,7 +117,7 @@ public class SqsClientPolling implements AwsSQS {
                 .queueUrl(queueUrl.queueUrl())
                 .receiptHandle(message.receiptHandle())
                 .build();
-        sqsClient.deleteMessage(deleteMessageRequest);
+        sqsExtended.deleteMessage(deleteMessageRequest);
     }
 
 }

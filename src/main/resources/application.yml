@@ -5,3 +5,5 @@ spring:
 aws:
   queue:
     name: dev-dove-sqs
+  bucket:
+    name: dev-dove-s3

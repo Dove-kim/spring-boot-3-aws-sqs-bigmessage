@@ -8,6 +8,9 @@ import software.amazon.awssdk.services.sqs.model.Message;
 @Slf4j
 @Service
 public class MessageService {
+    /**
+     * 메시지 처리
+     */
     public void process(Message message, AwsSQS awsSQS) {
         log.info(message.body());
 

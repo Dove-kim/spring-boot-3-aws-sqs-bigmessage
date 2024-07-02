@@ -27,6 +27,7 @@ dependencies {
     // aws SDK V2
     implementation platform("software.amazon.awssdk:bom:2.21.1")
     implementation "software.amazon.awssdk:sqs"
+    implementation "software.amazon.awssdk:s3"
 
     // AWS Java Extended client
     implementation 'com.amazonaws:amazon-sqs-java-extended-client-lib:2.1.1'
