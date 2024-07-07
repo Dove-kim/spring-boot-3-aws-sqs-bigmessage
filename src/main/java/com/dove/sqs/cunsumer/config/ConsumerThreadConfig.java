@@ -17,6 +17,8 @@ public class ConsumerThreadConfig {
         taskExecutor.setMaxPoolSize(MAX_POOL_SIZE);
         taskExecutor.setQueueCapacity(QUEUE_CAPACITY);
         taskExecutor.setThreadNamePrefix("ConsumerThread-");
+        taskExecutor.setWaitForTasksToCompleteOnShutdown(true);
+        taskExecutor.setAwaitTerminationSeconds(60);
 
         taskExecutor.initialize();
         return taskExecutor;
